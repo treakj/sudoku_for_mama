@@ -1,0 +1,65 @@
+{
+  "gameModule": {
+    "init": {
+      "description": "Initialize the game on page load",
+      "parameters": [],
+      "returns": "void",
+      "sideEffects": "Attaches event listeners, sets initial state"
+    },
+    "newGame": {
+      "description": "Start a new game with selected difficulty",
+      "parameters": [
+        {
+          "name": "difficulty",
+          "type": "string",
+          "values": ["easy", "medium", "hard"]
+        }
+      ],
+      "returns": "void",
+      "sideEffects": "Resets gameState, renders board"
+    },
+    "checkWinCondition": {
+      "description": "Check if the puzzle is solved",
+      "parameters": [],
+      "returns": "boolean",
+      "sideEffects": "None"
+    }
+  },
+  "uiModule": {
+    "renderBoard": {
+      "description": "Render the Sudoku grid based on current state",
+      "parameters": [],
+      "returns": "void",
+      "sideEffects": "Updates DOM"
+    },
+    "handleCellClick": {
+      "description": "Handle cell selection",
+      "parameters": [
+        {"name": "row", "type": "number", "range": "0-8"},
+        {"name": "col", "type": "number", "range": "0-8"}
+      ],
+      "returns": "void",
+      "sideEffects": "Updates selectedCell, highlights"
+    },
+    "handleNumberClick": {
+      "description": "Handle number input",
+      "parameters": [
+        {"name": "number", "type": "number", "range": "1-9"}
+      ],
+      "returns": "void",
+      "sideEffects": "Updates userGrid or annotations, renders"
+    },
+    "handleErase": {
+      "description": "Clear user input from selected cell",
+      "parameters": [],
+      "returns": "void",
+      "sideEffects": "Clears value or notes, renders"
+    },
+    "toggleAnnotationMode": {
+      "description": "Switch between normal and annotation mode",
+      "parameters": [],
+      "returns": "void",
+      "sideEffects": "Updates isAnnotationMode, updates UI"
+    }
+  }
+}

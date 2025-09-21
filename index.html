@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数独 - Sudoku Game</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --grid-border: #2c3e50;
+            --cell-border: #bdc3c7;
+            --selected-cell: #3498db;
+            --prefilled-color: #2c3e50;
+            --user-color: #2980b9;
+            --highlight-number: #fff3cd;
+            --highlight-area: #f8f9fa;
+            --button-bg: #ecf0f1;
+            --button-hover: #d5dbdb;
+            --button-active: #3498db;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --annotation-color: #7f8c8d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            font-size: 1.2rem;
+            line-height: 1.5;
+            color: var(--text-color);
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--prefilled-color), var(--user-color));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        button, select {
+            font-size: 1.2rem;
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--grid-border);
+            border-radius: 0.75rem;
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover, select:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        button:focus, select:focus {
+            outline: 3px solid var(--selected-cell);
+            outline-offset: 2px;
+        }
+
+        #game-container {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            justify-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        #sudoku-grid {
+            width: min(70vw, 600px);
+            height: min(70vw, 600px);
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            grid-template-rows: repeat(9, 1fr);
+            border: 4px solid var(--grid-border);
+            background-color: var(--bg-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .cell {
+            border: 1px solid var(--cell-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            background-color: var(--bg-color);
+            transition: background-color 0.2s;
+        }
+
+        /* Thick borders for 3x3 boxes */
+        .cell[data-row="2"], .cell[data-row="5"] {
+            border-bottom: 2px solid var(--grid-border);
+        }
+        .cell[data-col="2"], .cell[data-col="5"] {
+            border-right: 2px solid var(--grid-border);
+        }
+
+        .cell-number {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: var(--text-color);
+            user-select: none;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .cell.prefilled .cell-number {
+            color: var(--prefilled-color);
+            font-weight: 900;
+        }
+
+        .cell.user-input .cell-number {
+            color: var(--user-color);
+            font-weight: 700;
+        }
+
+        .cell.selected {
+            background-color: var(--selected-cell) !important;
+            color: white;
+            box-shadow: inset 0 0 0 3px rgba(255,255,255,0.3);
+        }
+
+        .cell.selected .cell-number {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .cell.highlighted {
+            background-color: var(--highlight-area);
+        }
+
+        .cell.number-highlight {
+            background-color: var(--highlight-number);
+            border-color: #ffc107;
+        }
+
+        .cell.invalid {
+            border: 3px solid var(--error-color);
+            background-color: #ffeaea;
+            animation: shake 0.3s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+
+        .cell-notes {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 1px;
+            font-size: 0.7rem;
+            color: var(--user-color);
+        }
+
+        .cell.annotation-mode .cell-notes {
+            display: grid;
+        }
+
+        .cell.annotation-mode .cell-number {
+            display: none;
+        }
+
+        .note {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--annotation-color);
+        }
+
+        #control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-width: 220px;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        #number-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+        }
+
+        .number-btn {
+            aspect-ratio: 1;
+            font-size: 2.2rem;
+            font-weight: bold;
+            min-height: 65px;
+            border-radius: 0.75rem;
+            transition: all 0.2s ease;
+            background: linear-gradient(135deg, var(--button-bg), #ffffff);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        .number-btn:hover {
+            background: linear-gradient(135deg, var(--button-hover), #f8f9fa);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+        }
+
+        .number-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        #annotation-toggle, #eraser {
+            font-size: 1.2rem;
+            padding: 1.2rem;
+            white-space: nowrap;
+            border-radius: 0.75rem;
+            font-weight: 600;
+        }
+
+        #annotation-toggle.active {
+            background: linear-gradient(135deg, var(--button-active), #5dade2);
+            color: white;
+            border-color: var(--button-active);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        #eraser:hover {
+            background: linear-gradient(135deg, #e8f5e8, #d4edda);
+            border-color: var(--success-color);
+        }
+
+        #completion-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            border: 4px solid var(--success-color);
+            border-radius: 1.5rem;
+            padding: 3rem;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+            z-index: 1000;
+            color: var(--success-color);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            animation: celebration 0.6s ease-out;
+        }
+
+        @keyframes celebration {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Responsive design for tablets */
+        @media (max-width: 768px) {
+            #game-container {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            #control-panel {
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            #number-pad {
+                order: 1;
+            }
+            
+            #annotation-toggle, #eraser {
+                order: 2;
+                min-width: 120px;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 0.5rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            #sudoku-grid {
+                width: 95vw;
+                height: 95vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>数独</h1>
+        <div class="controls">
+            <button id="new-game">新しいゲーム</button>
+            <select id="difficulty">
+                <option value="easy">簡単</option>
+                <option value="medium">普通</option>
+                <option value="hard">難しい</option>
+            </select>
+            <select id="language">
+                <option value="ja">日本語</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+    </header>
+
+    <main>
+        <div id="game-container">
+            <div id="sudoku-grid">
+                <!-- 9x9 grid with 81 cells -->
+                <div class="cell" data-row="0" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="0" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="0" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="0" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="0" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="0" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="0" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="0" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="0" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="1" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="2" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="3" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="4" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="5" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="6" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="7" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="0"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="1"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="2"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="3"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="4"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="5"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="6"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="7"><div class="cell-number"></div><div class="cell-notes"></div></div>
+                <div class="cell" data-row="8" data-col="8"><div class="cell-number"></div><div class="cell-notes"></div></div>
+            </div>
+            
+            <div id="control-panel">
+                <div id="number-pad">
+                    <button class="number-btn" data-number="1">1</button>
+                    <button class="number-btn" data-number="2">2</button>
+                    <button class="number-btn" data-number="3">3</button>
+                    <button class="number-btn" data-number="4">4</button>
+                    <button class="number-btn" data-number="5">5</button>
+                    <button class="number-btn" data-number="6">6</button>
+                    <button class="number-btn" data-number="7">7</button>
+                    <button class="number-btn" data-number="8">8</button>
+                    <button class="number-btn" data-number="9">9</button>
+                </div>
+                <button id="annotation-toggle">メモモード</button>
+                <button id="eraser">消去</button>
+            </div>
+        </div>
+        
+        <div id="completion-message" class="hidden">
+            おめでとうございます！
+        </div>
+    </main>
+
+    <script>
+        // Game State
+        const gameState = {
+            puzzle: Array(9).fill().map(() => Array(9).fill(0)),
+            solution: Array(9).fill().map(() => Array(9).fill(0)),
+            userGrid: Array(9).fill().map(() => Array(9).fill(0)),
+            annotations: Array(9).fill().map(() => Array(9).fill().map(() => Array(9).fill(false))),
+            selectedCell: null,
+            isAnnotationMode: false,
+            currentLanguage: 'ja'
+        };
+
+        // Sample puzzles (will be expanded in T015)
+        const puzzles = {
+            easy: [
+                {
+                    puzzle: [
+                        [5,3,0,0,7,0,0,0,0],
+                        [6,0,0,1,9,5,0,0,0],
+                        [0,9,8,0,0,0,0,6,0],
+                        [8,0,0,0,6,0,0,0,3],
+                        [4,0,0,8,0,3,0,0,1],
+                        [7,0,0,0,2,0,0,0,6],
+                        [0,6,0,0,0,0,2,8,0],
+                        [0,0,0,4,1,9,0,0,5],
+                        [0,0,0,0,8,0,0,7,9]
+                    ],
+                    solution: [
+                        [5,3,4,6,7,8,9,1,2],
+                        [6,7,2,1,9,5,3,4,8],
+                        [1,9,8,3,4,2,5,6,7],
+                        [8,5,9,7,6,1,4,2,3],
+                        [4,2,6,8,5,3,7,9,1],
+                        [7,1,3,9,2,4,8,5,6],
+                        [9,6,1,5,3,7,2,8,4],
+                        [2,8,7,4,1,9,6,3,5],
+                        [3,4,5,2,8,6,1,7,9]
+                    ]
+                }
+            ],
+            medium: [
+                {
+                    puzzle: [
+                        [0,2,0,6,0,8,0,0,0],
+                        [5,8,0,0,0,9,7,0,0],
+                        [0,0,0,0,4,0,0,0,0],
+                        [3,7,0,0,0,0,5,0,0],
+                        [6,0,0,0,0,0,0,0,4],
+                        [0,0,8,0,0,0,0,1,3],
+                        [0,0,0,0,2,0,0,0,0],
+                        [0,0,9,8,0,0,0,3,6],
+                        [0,0,0,3,0,6,0,9,0]
+                    ],
+                    solution: [
+                        [1,2,3,6,7,8,9,4,5],
+                        [5,8,4,2,3,9,7,6,1],
+                        [9,6,7,1,4,5,3,2,8],
+                        [3,7,2,4,6,1,5,8,9],
+                        [6,1,5,9,8,3,2,7,4],
+                        [4,9,8,5,2,7,6,1,3],
+                        [8,3,6,7,2,4,1,5,9],
+                        [2,4,9,8,1,2,4,3,6],
+                        [7,5,1,3,9,6,8,9,2]
+                    ]
+                }
+            ],
+            hard: [
+                {
+                    puzzle: [
+                        [0,0,0,6,0,0,4,0,0],
+                        [7,0,0,0,0,3,6,0,0],
+                        [0,0,0,0,9,1,0,8,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,5,0,1,8,0,0,0,3],
+                        [0,0,0,3,0,6,0,4,5],
+                        [0,4,0,2,0,0,0,6,0],
+                        [9,0,3,0,0,0,0,0,0],
+                        [0,2,0,0,0,0,1,0,0]
+                    ],
+                    solution: [
+                        [5,8,1,6,7,2,4,3,9],
+                        [7,9,2,8,4,3,6,5,1],
+                        [3,6,4,5,9,1,7,8,2],
+                        [4,3,8,9,5,7,2,1,6],
+                        [2,5,6,1,8,4,9,7,3],
+                        [1,7,9,3,2,6,8,4,5],
+                        [8,4,5,2,1,9,3,6,7],
+                        [9,1,3,7,6,8,5,2,4],
+                        [6,2,7,4,3,5,1,9,8]
+                    ]
+                }
+            ]
+        };
+
+        // Language translations
+        const translations = {
+            ja: {
+                newGame: '新しいゲーム',
+                easy: '簡単',
+                medium: '普通',
+                hard: '難しい',
+                annotationMode: 'メモモード',
+                eraser: '消去',
+                congratulations: 'おめでとうございます！'
+            },
+            en: {
+                newGame: 'New Game',
+                easy: 'Easy',
+                medium: 'Medium',
+                hard: 'Hard',
+                annotationMode: 'Notes',
+                eraser: 'Erase',
+                congratulations: 'Congratulations!'
+            }
+        };
+
+        // Game Module
+        function init() {
+            attachEventListeners();
+            updateLanguage();
+            newGame('easy');
+        }
+
+        function newGame(difficulty) {
+            const puzzleData = puzzles[difficulty][0];
+            gameState.puzzle = puzzleData.puzzle.map(row => [...row]);
+            gameState.solution = puzzleData.solution.map(row => [...row]);
+            gameState.userGrid = puzzleData.puzzle.map(row => [...row]);
+            gameState.annotations = Array(9).fill().map(() => Array(9).fill().map(() => Array(9).fill(false)));
+            gameState.selectedCell = null;
+            
+            document.getElementById('completion-message').classList.add('hidden');
+            renderBoard();
+        }
+
+        function checkWinCondition() {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (gameState.userGrid[row][col] !== gameState.solution[row][col]) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // UI Module
+        function renderBoard() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const numberEl = cell.querySelector('.cell-number');
+                const notesEl = cell.querySelector('.cell-notes');
+                
+                // Clear previous state
+                cell.classList.remove('prefilled', 'user-input', 'selected', 'highlighted', 'number-highlight', 'annotation-mode');
+                
+                if (gameState.puzzle[row][col] !== 0) {
+                    // Pre-filled number
+                    numberEl.textContent = gameState.puzzle[row][col];
+                    cell.classList.add('prefilled');
+                } else if (gameState.userGrid[row][col] !== 0) {
+                    // User input
+                    numberEl.textContent = gameState.userGrid[row][col];
+                    cell.classList.add('user-input');
+                } else {
+                    // Empty cell
+                    numberEl.textContent = '';
+                    
+                    // Check for annotations
+                    const hasNotes = gameState.annotations[row][col].some(note => note);
+                    if (hasNotes) {
+                        cell.classList.add('annotation-mode');
+                        renderNotes(notesEl, gameState.annotations[row][col]);
+                    } else {
+                        notesEl.innerHTML = '';
+                    }
+                }
+                
+                // Highlight selected cell
+                if (gameState.selectedCell && gameState.selectedCell.row === row && gameState.selectedCell.col === col) {
+                    cell.classList.add('selected');
+                }
+            });
+            
+            // Update highlighting
+            updateHighlighting();
+        }
+
+        function renderNotes(notesEl, notes) {
+            notesEl.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const noteEl = document.createElement('div');
+                noteEl.classList.add('note');
+                if (notes[i]) {
+                    noteEl.textContent = i + 1;
+                }
+                notesEl.appendChild(noteEl);
+            }
+        }
+
+        function handleCellClick(row, col) {
+            gameState.selectedCell = { row, col };
+            renderBoard();
+        }
+
+        function handleNumberClick(number) {
+            if (!gameState.selectedCell) return;
+            
+            const { row, col } = gameState.selectedCell;
+            
+            // Don't allow input in pre-filled cells
+            if (gameState.puzzle[row][col] !== 0) return;
+            
+            if (gameState.isAnnotationMode) {
+                // Toggle annotation
+                gameState.annotations[row][col][number - 1] = !gameState.annotations[row][col][number - 1];
+                // Clear the number if we're adding notes
+                gameState.userGrid[row][col] = 0;
+            } else {
+                // Place number
+                gameState.userGrid[row][col] = number;
+                // Clear annotations when placing a number
+                gameState.annotations[row][col] = Array(9).fill(false);
+                
+                // Check for invalid move and highlight conflicts
+                highlightInvalidMoves(row, col, number);
+            }
+            
+            renderBoard();
+            
+            // Check for win condition
+            if (checkWinCondition()) {
+                setTimeout(() => {
+                    document.getElementById('completion-message').classList.remove('hidden');
+                }, 300);
+            }
+        }
+
+        function highlightInvalidMoves(row, col, number) {
+            // Clear previous invalid highlights
+            document.querySelectorAll('.cell').forEach(cell => cell.classList.remove('invalid'));
+            
+            const conflicts = [];
+            
+            // Check row conflicts
+            for (let c = 0; c < 9; c++) {
+                if (c !== col && (gameState.userGrid[row][c] === number || gameState.puzzle[row][c] === number)) {
+                    conflicts.push({ row, col: c });
+                }
+            }
+            
+            // Check column conflicts
+            for (let r = 0; r < 9; r++) {
+                if (r !== row && (gameState.userGrid[r][col] === number || gameState.puzzle[r][col] === number)) {
+                    conflicts.push({ row: r, col });
+                }
+            }
+            
+            // Check 3x3 box conflicts
+            const boxStartRow = Math.floor(row / 3) * 3;
+            const boxStartCol = Math.floor(col / 3) * 3;
+            for (let r = boxStartRow; r < boxStartRow + 3; r++) {
+                for (let c = boxStartCol; c < boxStartCol + 3; c++) {
+                    if ((r !== row || c !== col) && (gameState.userGrid[r][c] === number || gameState.puzzle[r][c] === number)) {
+                        conflicts.push({ row: r, col: c });
+                    }
+                }
+            }
+            
+            // Highlight conflicts
+            if (conflicts.length > 0) {
+                // Highlight the placed cell as invalid too
+                const placedCell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                placedCell.classList.add('invalid');
+                
+                // Highlight conflicting cells
+                conflicts.forEach(conflict => {
+                    const conflictCell = document.querySelector(`[data-row="${conflict.row}"][data-col="${conflict.col}"]`);
+                    conflictCell.classList.add('invalid');
+                });
+                
+                // Show tooltip message
+                showInvalidMoveMessage();
+            }
+        }
+
+        function showInvalidMoveMessage() {
+            const message = gameState.currentLanguage === 'ja' 
+                ? '重複しています' 
+                : 'Duplicate number';
+            
+            // Create temporary message
+            const tooltip = document.createElement('div');
+            tooltip.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #dc3545;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                z-index: 1000;
+                font-size: 1.1rem;
+            `;
+            tooltip.textContent = message;
+            document.body.appendChild(tooltip);
+            
+            // Remove after 2 seconds
+            setTimeout(() => {
+                if (tooltip.parentNode) {
+                    tooltip.parentNode.removeChild(tooltip);
+                }
+            }, 2000);
+        }
+
+        function handleErase() {
+            if (!gameState.selectedCell) return;
+            
+            const { row, col } = gameState.selectedCell;
+            
+            // Don't allow erasing pre-filled cells
+            if (gameState.puzzle[row][col] !== 0) return;
+            
+            gameState.userGrid[row][col] = 0;
+            gameState.annotations[row][col] = Array(9).fill(false);
+            renderBoard();
+        }
+
+        function toggleAnnotationMode() {
+            gameState.isAnnotationMode = !gameState.isAnnotationMode;
+            const button = document.getElementById('annotation-toggle');
+            if (gameState.isAnnotationMode) {
+                button.classList.add('active');
+            } else {
+                button.classList.remove('active');
+            }
+        }
+
+        function updateHighlighting() {
+            if (!gameState.selectedCell) return;
+            
+            const { row, col } = gameState.selectedCell;
+            const cells = document.querySelectorAll('.cell');
+            
+            // Highlight row, column, and box
+            cells.forEach(cell => {
+                const cellRow = parseInt(cell.dataset.row);
+                const cellCol = parseInt(cell.dataset.col);
+                const boxRow = Math.floor(cellRow / 3);
+                const boxCol = Math.floor(cellCol / 3);
+                const selectedBoxRow = Math.floor(row / 3);
+                const selectedBoxCol = Math.floor(col / 3);
+                
+                if (cellRow === row || cellCol === col || (boxRow === selectedBoxRow && boxCol === selectedBoxCol)) {
+                    if (!(cellRow === row && cellCol === col)) {
+                        cell.classList.add('highlighted');
+                    }
+                }
+            });
+            
+            // Highlight matching numbers
+            const selectedValue = gameState.userGrid[row][col] || gameState.puzzle[row][col];
+            if (selectedValue !== 0) {
+                cells.forEach(cell => {
+                    const cellRow = parseInt(cell.dataset.row);
+                    const cellCol = parseInt(cell.dataset.col);
+                    const cellValue = gameState.userGrid[cellRow][cellCol] || gameState.puzzle[cellRow][cellCol];
+                    
+                    if (cellValue === selectedValue && !(cellRow === row && cellCol === col)) {
+                        cell.classList.add('number-highlight');
+                    }
+                });
+            }
+        }
+
+        function updateLanguage() {
+            const lang = gameState.currentLanguage;
+            const t = translations[lang];
+            
+            document.getElementById('new-game').textContent = t.newGame;
+            document.getElementById('annotation-toggle').textContent = t.annotationMode;
+            document.getElementById('eraser').textContent = t.eraser;
+            document.getElementById('completion-message').textContent = t.congratulations;
+            
+            const difficultySelect = document.getElementById('difficulty');
+            difficultySelect.options[0].textContent = t.easy;
+            difficultySelect.options[1].textContent = t.medium;
+            difficultySelect.options[2].textContent = t.hard;
+        }
+
+        function attachEventListeners() {
+            // Cell clicks
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.addEventListener('click', () => {
+                    const row = parseInt(cell.dataset.row);
+                    const col = parseInt(cell.dataset.col);
+                    handleCellClick(row, col);
+                });
+            });
+            
+            // Number pad clicks
+            document.querySelectorAll('.number-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const number = parseInt(btn.dataset.number);
+                    handleNumberClick(number);
+                });
+            });
+            
+            // Control buttons
+            document.getElementById('new-game').addEventListener('click', () => {
+                const difficulty = document.getElementById('difficulty').value;
+                newGame(difficulty);
+            });
+            
+            document.getElementById('annotation-toggle').addEventListener('click', toggleAnnotationMode);
+            document.getElementById('eraser').addEventListener('click', handleErase);
+            
+            // Language selector
+            document.getElementById('language').addEventListener('change', (e) => {
+                gameState.currentLanguage = e.target.value;
+                updateLanguage();
+            });
+            
+            // Keyboard support
+            document.addEventListener('keydown', (e) => {
+                if (!gameState.selectedCell) return;
+                
+                const { row, col } = gameState.selectedCell;
+                let newRow = row, newCol = col;
+                
+                switch(e.key) {
+                    case 'ArrowUp': newRow = Math.max(0, row - 1); break;
+                    case 'ArrowDown': newRow = Math.min(8, row + 1); break;
+                    case 'ArrowLeft': newCol = Math.max(0, col - 1); break;
+                    case 'ArrowRight': newCol = Math.min(8, col + 1); break;
+                    case '1': case '2': case '3': case '4': case '5':
+                    case '6': case '7': case '8': case '9':
+                        handleNumberClick(parseInt(e.key));
+                        return;
+                    case 'Delete': case 'Backspace':
+                        handleErase();
+                        return;
+                    case 'n': case 'N':
+                        toggleAnnotationMode();
+                        return;
+                    default: return;
+                }
+                
+                e.preventDefault();
+                handleCellClick(newRow, newCol);
+            });
+        }
+
+        // Initialize game when page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
