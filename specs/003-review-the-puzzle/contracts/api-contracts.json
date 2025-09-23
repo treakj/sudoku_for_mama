@@ -1,0 +1,117 @@
+{
+  "title": "Dynamic Puzzle Generation API",
+  "description": "Internal API contracts for puzzle generation functionality",
+  "version": "1.0.0",
+  "contracts": {
+    "generatePuzzle": {
+      "description": "Generate a new Sudoku puzzle with specified difficulty",
+      "input": {
+        "difficulty": {
+          "type": "string",
+          "enum": ["初級", "中級", "上級"],
+          "required": true,
+          "description": "Difficulty level in Japanese"
+        }
+      },
+      "output": {
+        "success": {
+          "puzzle": {
+            "type": "array",
+            "description": "9x9 array with 0 for empty cells, 1-9 for clues",
+            "structure": "Array(9) of Array(9) of integers 0-9"
+          },
+          "solution": {
+            "type": "array", 
+            "description": "9x9 array with complete solution",
+            "structure": "Array(9) of Array(9) of integers 1-9"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "difficulty": "string",
+              "clueCount": "number",
+              "generationTime": "number",
+              "attempts": "number"
+            }
+          }
+        },
+        "failure": {
+          "error": {
+            "type": "string",
+            "description": "Error message if generation failed"
+          },
+          "fallback": {
+            "type": "object",
+            "description": "Static puzzle used as fallback",
+            "structure": "Same as success output"
+          }
+        }
+      }
+    },
+    
+    "validatePuzzle": {
+      "description": "Validate puzzle correctness and solution uniqueness",
+      "input": {
+        "puzzle": {
+          "type": "array",
+          "description": "9x9 puzzle array to validate",
+          "required": true
+        }
+      },
+      "output": {
+        "isValid": {
+          "type": "boolean",
+          "description": "Whether puzzle follows Sudoku rules"
+        },
+        "hasUniqueSolution": {
+          "type": "boolean", 
+          "description": "Whether puzzle has exactly one solution"
+        },
+        "solutionCount": {
+          "type": "number",
+          "description": "Number of possible solutions found"
+        }
+      }
+    },
+    
+    "getDifficultyTargets": {
+      "description": "Get clue count targets for difficulty level",
+      "input": {
+        "difficulty": {
+          "type": "string",
+          "enum": ["初級", "中級", "上級"],
+          "required": true
+        }
+      },
+      "output": {
+        "minClues": {
+          "type": "number",
+          "description": "Minimum clues for this difficulty"
+        },
+        "maxClues": {
+          "type": "number",
+          "description": "Maximum clues for this difficulty"
+        },
+        "targetClues": {
+          "type": "number",
+          "description": "Preferred clue count"
+        }
+      }
+    }
+  },
+  
+  "errorHandling": {
+    "timeoutError": {
+      "condition": "Generation takes longer than 500ms",
+      "response": "Return fallback puzzle with error flag"
+    },
+    "invalidGeneration": {
+      "condition": "Generated puzzle has multiple solutions",
+      "response": "Retry generation up to maxAttempts"
+    },
+    "systemError": {
+      "condition": "Unexpected algorithm failure",
+      "response": "Log error and use fallback puzzle"
+    }
+  }
+}

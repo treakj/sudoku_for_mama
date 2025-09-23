@@ -29,3 +29,8 @@ Web-based Sudoku game for seniors with Japanese default, large grid, annotation 
 ## Recent Changes
 - Initial setup for Sudoku game
 - Spec and plan completed
+- Dynamic puzzle generation with backtracking algorithm planned
+- 5-phase generation process: full grid → cell removal → validation → difficulty calibration
+- Target clue counts: 初級(36-46), 中級(28-35), 上級(17-25)
+- Performance requirement: <500ms generation time
+- Fallback to static puzzles if generation fails
